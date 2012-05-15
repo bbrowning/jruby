@@ -28,6 +28,7 @@
 
 package org.jruby.javasupport.proxy;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -44,6 +45,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import org.jruby.Ruby;
 import org.objectweb.asm.ClassVisitor;
@@ -100,7 +102,7 @@ public class JavaProxyClassFactory {
 
     private static int counter;
 
-    private static Map proxies = Collections.synchronizedMap(new HashMap());
+    private static Map proxies = Collections.synchronizedMap(new WeakHashMap());
 
     private static Method defineClass_method; // statically initialized below
 
@@ -146,7 +148,8 @@ public class JavaProxyClassFactory {
             key.addAll(names);
         }
 
-        JavaProxyClass proxyClass = (JavaProxyClass) proxies.get(key);
+        WeakReference<JavaProxyClass> proxyRef = (WeakReference<JavaProxyClass>) proxies.get(key);
+        JavaProxyClass proxyClass = proxyRef == null ? null : proxyRef.get();
         if (proxyClass == null) {
 
             if (targetClassName == null) {
@@ -174,7 +177,7 @@ public class JavaProxyClassFactory {
             proxyClass = generate(loader, targetClassName, superClass,
                     interfaces, methods, selfType);
 
-            proxies.put(key, proxyClass);
+            proxies.put(key, new WeakReference<JavaProxyClass>(proxyClass));
         }
 
         return proxyClass;
