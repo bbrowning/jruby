@@ -28,7 +28,6 @@
 
 package org.jruby.javasupport.proxy;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -39,15 +38,14 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 import org.jruby.Ruby;
+import org.jruby.javasupport.JavaSupport;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
@@ -102,8 +100,6 @@ public class JavaProxyClassFactory {
 
     private static int counter;
 
-    private static Map proxies = Collections.synchronizedMap(new WeakHashMap());
-
     private static Method defineClass_method; // statically initialized below
 
     private static synchronized int nextId() {
@@ -148,8 +144,9 @@ public class JavaProxyClassFactory {
             key.addAll(names);
         }
 
-        WeakReference<JavaProxyClass> proxyRef = (WeakReference<JavaProxyClass>) proxies.get(key);
-        JavaProxyClass proxyClass = proxyRef == null ? null : proxyRef.get();
+        Map<Set<?>, JavaProxyClass> proxyCache =
+                runtime.getJavaSupport().getJavaProxyClassCache();
+        JavaProxyClass proxyClass = proxyCache.get(key);
         if (proxyClass == null) {
 
             if (targetClassName == null) {
@@ -177,7 +174,7 @@ public class JavaProxyClassFactory {
             proxyClass = generate(loader, targetClassName, superClass,
                     interfaces, methods, selfType);
 
-            proxies.put(key, new WeakReference<JavaProxyClass>(proxyClass));
+            proxyCache.put(key, proxyClass);
         }
 
         return proxyClass;
